@@ -73,12 +73,10 @@ static bool debug_dds_direct_changed = false;
 static uint32_t measured_freq[NUM_CHANNELS] = {0};
 static uint32_t last_printed_freq[NUM_CHANNELS] = {0};
 
-// --- EMA (Exponential Moving Average) filter for frequency smoothing ---
-// Alpha = 0.2: smooth but responsive. Lower = smoother, higher = faster response.
-static const double FREQ_EMA_ALPHA = 0.05;  // Increased from 0.05 for faster response
-static const double FREQ_EMA_RESET_THRESHOLD = 0.01;  // Reset threshold: 1% (was 5%)
-static double freq_ema[NUM_CHANNELS] = {0};
-static bool   freq_ema_valid[NUM_CHANNELS] = {false};
+static const double FREQ_EMA_ALPHA         = 0.05;   // 滤波系数，越小越平滑
+static const double FREQ_EMA_RESET_THRESH  = 0.01;   // 变化超过 1% 则重置 EMA
+static const int   FREQ_DEADZONE_HZ       = 2;      // 稳定死区 ±Hz，避免显示跳动
+static const int   TWO_SAMPLE_PCT          = 2;      // 双样本确认范围 ±%
 
 // --- Gate-based frequency measurement ---
 // Periodically sample PIO edge count + micros() timestamp.
@@ -244,18 +242,14 @@ void sampleFrequency(uint8_t ch) {
         uint32_t delta_us = now_us - prev_sample_us[ch];
 
         if (delta_us > 0 && delta_edges > 0) {
-            // freq = delta_edges * 1000000 / delta_us (with rounding)
-            uint32_t freq = (uint32_t)(
-                ((uint64_t)delta_edges * 1000000ULL + delta_us / 2) / delta_us
-            );
+            uint32_t freq = (uint32_t)(((uint64_t)delta_edges * 1000000ULL + delta_us / 2) / delta_us);
 
-            // Two-sample confirmation: only accept if within 2% of pending
-            // This filters out transition values when frequency changes
-            if (pending_freq[ch] == 0 || 
-                (freq > pending_freq[ch] * 98 / 100 && freq < pending_freq[ch] * 102 / 100)) {
-                // EMA smoothing filter with adaptive reset threshold
-                double threshold_ratio = 1.0 + FREQ_EMA_RESET_THRESHOLD;
-                if (!freq_ema_valid[ch] || 
+            int pct_lo = 100 - TWO_SAMPLE_PCT;
+            int pct_hi = 100 + TWO_SAMPLE_PCT;
+            if (pending_freq[ch] == 0 ||
+                (freq > pending_freq[ch] * pct_lo / 100 && freq < pending_freq[ch] * pct_hi / 100)) {
+                double threshold_ratio = 1.0 + FREQ_EMA_RESET_THRESH;
+                if (!freq_ema_valid[ch] ||
                     freq > freq_ema[ch] * threshold_ratio || freq < freq_ema[ch] / threshold_ratio) {
                     // Significant change (>threshold): reset EMA instantly for fast response
                     freq_ema[ch] = (double)freq;
@@ -270,7 +264,7 @@ void sampleFrequency(uint8_t ch) {
                     measured_freq[ch] = new_freq;
                 } else {
                     int32_t delta = (int32_t)new_freq - (int32_t)measured_freq[ch];
-                    if (delta < -2 || delta > 2) {
+                    if (delta < -FREQ_DEADZONE_HZ || delta > FREQ_DEADZONE_HZ) {
                         measured_freq[ch] = new_freq;
                     }
                 }
