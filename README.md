@@ -31,9 +31,11 @@ flowchart LR
 
 | 文件 | 功能 | 说明 |
 |------|------|------|
-| main.ino | 主程序 | 初始化、主循环、DDS 控制、串口 |
+| main.ino | 主程序 | 按 11 节组织：配置、引脚、测量、校准、DDS、串口、setup/loop |
 | measure.pio.h | 频率测量 | PIO 边沿计数，4 通道 |
 | phase_measure.pio.h | 相位测量 | PIO 相位差测量，3 通道 |
+
+main.ino 顶部注释中有**代码结构索引**（§1～§11），便于定位修改。
 
 ---
 
@@ -152,27 +154,27 @@ flowchart TD
 
 | 参数 | 位置 | 默认值 | 说明 |
 |------|------|--------|------|
-| FREQ_EMA_ALPHA | main.ino:78 | 0.05 | EMA 系数，越小越平滑，越大响应越快 |
-| FREQ_EMA_RESET_THRESHOLD | main.ino:79 | 0.01 | 频率变化超过 1% 时重置 EMA |
-| 稳定死区 | main.ino:269 | ±2Hz | 变化在此范围内不更新，避免跳动 |
-| 双样本确认范围 | main.ino:254 | ±2% | 新频率相对 pending 的接受范围 |
+| FREQ_EMA_ALPHA | main.ino §3 | 0.05 | EMA 系数，越小越平滑，越大响应越快 |
+| FREQ_EMA_RESET_THRESHOLD | main.ino §3 | 0.01 | 频率变化超过 1% 时重置 EMA |
+| FREQ_STABILITY_DEADZONE_HZ | main.ino §1 | 2 | 稳定死区 Hz，变化在此内不更新显示 |
+| TWO_SAMPLE_PCT_LOW/HIGH | main.ino §1 | 98/102 | 双样本确认时相对 pending 的百分比范围 |
 
 ### 4.3 幅度校准参数
 
 | 参数 | 位置 | 说明 |
 |------|------|------|
-| CAL_FREQ_LOW | main.ino:118 | 低频校准点 1kHz |
-| CAL_VPP_LOW_MV | main.ino:119 | 1kHz、ACR=1023 时实测 VPP |
-| CAL_FREQ_HIGH | main.ino:122 | 高频校准点 2MHz |
-| CAL_VPP_HIGH_MV | main.ino:123 | 2MHz、ACR=1023 时实测 VPP |
-| TARGET_VPP_MV | main.ino:115 | 目标输出峰峰值 1000mV |
-| AMP_RF / AMP_RI | main.ino:111-112 | 放大器 Rf、Ri |
+| CAL_FREQ_LOW | main.ino §4 | 低频校准点 1kHz |
+| CAL_VPP_LOW_MV | main.ino §4 | 1kHz、ACR=1023 时实测 VPP |
+| CAL_FREQ_HIGH | main.ino §4 | 高频校准点 2MHz |
+| CAL_VPP_HIGH_MV | main.ino §4 | 2MHz、ACR=1023 时实测 VPP |
+| TARGET_VPP_MV | main.ino §4 | 目标输出峰峰值 1000mV |
+| AMP_RF / AMP_RI | main.ino §4 | 放大器 Rf、Ri |
 
 ### 4.4 时序参数
 
 | 参数 | 位置 | 默认值 | 说明 |
 |------|------|--------|------|
-| UPDATE_INTERVAL_MS | main.ino:408 | 100 | 频率采样和 DDS 更新周期 |
+| UPDATE_INTERVAL_MS | main.ino §1 | 100 | 频率采样和 DDS 更新周期 |
 
 ### 4.5 AD9959 参数
 
@@ -190,7 +192,7 @@ flowchart TD
 
 | 函数 | 位置 | 功能 |
 |------|------|------|
-| setup | main.ino:384 | 串口、DDS、PIO、初始频率 |
+| setup | main.ino §11 | 串口、DDS、PIO、初始频率 |
 | frequency_counter_program_init | measure.pio.h:62 | 初始化 PIO0 频率计数 SM |
 | phase_measure_program_init | phase_measure.pio.h:96 | 初始化 PIO1 相位测量 SM |
 
@@ -198,8 +200,8 @@ flowchart TD
 
 | 函数 | 位置 | 功能 |
 |------|------|------|
-| sampleFrequency | main.ino:237 | 采样频率，EMA 滤波，稳定死区 |
-| samplePhase | main.ino:289 | 采样相位差，转换为度 |
+| sampleFrequency | main.ino §8 | 采样频率，EMA 滤波，稳定死区 |
+| samplePhase | main.ino §9 | 采样相位差，转换为度 |
 | frequency_counter_read_count | measure.pio.h:86 | 读取 PIO 边沿计数 |
 | phase_measure_read | phase_measure.pio.h:123 | 读取 PIO 相位计数值 |
 
@@ -207,19 +209,19 @@ flowchart TD
 
 | 函数 | 位置 | 功能 |
 |------|------|------|
-| setSmartFrequencyAndPhase | main.ino:189 | 设置频率、相位、ACR |
-| calculateSmartACR | main.ino:166 | 按频率计算 ACR 幅度补偿 |
-| setPLL | main.ino:149 | 设置 DDS PLL 倍频 |
-| selectChannel | main.ino:373 | 选择 AD9959 通道 |
-| ioUpdate | main.ino:131 | 触发 IO_UPDATE |
-| writeRegisterMulti | main.ino:138 | SPI 写多字节寄存器 |
+| setSmartFrequencyAndPhase | main.ino §7 | 设置频率、相位、ACR |
+| calculateSmartACR | main.ino §7 | 按频率计算 ACR 幅度补偿 |
+| setPLL | main.ino §6 | 设置 DDS PLL 倍频 |
+| selectChannel | main.ino §6 | 选择 AD9959 通道 |
+| ioUpdate | main.ino §6 | 触发 IO_UPDATE |
+| writeRegisterMulti | main.ino §6 | SPI 写多字节寄存器 |
 
 ### 5.4 串口与主循环
 
 | 函数 | 位置 | 功能 |
 |------|------|------|
-| parseSerialInput | main.ino:315 | 解析 n=2~20 倍频命令 |
-| loop | main.ino:419 | 主循环，采样、更新、打印 |
+| parseSerialInput | main.ino §10 | 解析 n=1~20 倍频命令 |
+| loop | main.ino §11 | 主循环，采样、更新、打印 |
 
 ---
 
@@ -227,15 +229,15 @@ flowchart TD
 
 ### 6.1 修改默认倍频系数
 
-**位置：** main.ino 第 8 行
+**位置：** main.ino §1 配置与宏
 
 ```cpp
-#define DEFAULT_MULTIPLIER_N 20   // 改为 2~20 之间的目标值
+#define DEFAULT_MULTIPLIER_N 20   // 改为 1~20 之间的目标值
 ```
 
 ### 6.2 调整频率跟踪速度
 
-**位置：** main.ino 第 78-79 行
+**位置：** main.ino §3 频率测量状态变量
 
 | 目标 | 调整 |
 |------|------|
@@ -245,26 +247,23 @@ flowchart TD
 
 ### 6.3 调整显示稳定死区
 
-**位置：** main.ino 第 269-274 行
+**位置：** main.ino §1 中 `FREQ_STABILITY_DEADZONE_HZ`，或 §8 中使用处
 
 ```cpp
-// 将 2 改为所需 Hz 值
-if (delta < -2 || delta > 2) {
-    measured_freq[ch] = new_freq;
-}
+#define FREQ_STABILITY_DEADZONE_HZ  2   // 改为所需 Hz 值
 ```
 
 ### 6.4 修改更新周期
 
-**位置：** main.ino 第 408 行
+**位置：** main.ino §1 配置与宏
 
 ```cpp
-static const unsigned long UPDATE_INTERVAL_MS = 100;  // 单位 ms
+#define UPDATE_INTERVAL_MS  100   // 单位 ms
 ```
 
 ### 6.5 幅度校准
 
-**位置：** main.ino 第 117-123 行
+**位置：** main.ino §4 幅度校准参数
 
 1. 在 1kHz、ACR=1023 时测输出 VPP → 填入 CAL_VPP_LOW_MV
 2. 在 2MHz、ACR=1023 时测输出 VPP → 填入 CAL_VPP_HIGH_MV
@@ -272,15 +271,15 @@ static const unsigned long UPDATE_INTERVAL_MS = 100;  // 单位 ms
 
 ### 6.6 更换引脚
 
-**位置：** main.ino 第 11-22 行
+**位置：** main.ino §2 引脚与硬件映射
 
 修改 DDS 和频率输入引脚宏定义，并同步原理图与 PCB。
 
 ### 6.7 扩展倍频范围
 
-**位置：** main.ino 第 351、410 行
+**位置：** main.ino §1 中 `MULTIPLIER_MIN`/`MULTIPLIER_MAX`，§10 中 parseSerialInput
 
-1. parseSerialInput 中 `val >= 1 && val <= 20` 改为所需范围
+1. 修改 `MULTIPLIER_MIN`、`MULTIPLIER_MAX` 及 parseSerialInput 中的范围判断
 2. 确认 AD9959 PLL 和 sys_clk 满足输出频率要求
 
 ---
