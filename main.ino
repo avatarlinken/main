@@ -430,7 +430,7 @@ void setup(void) {
     digitalWrite(DDS_RESET_PIN, LOW);
     delay(DDS_RESET_DELAY_MS);
 
-    setPLL(4);
+    setPLL(6);
     selectAllChannels();
     setSmartFrequency(0);
 
